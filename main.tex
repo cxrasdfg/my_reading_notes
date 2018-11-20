@@ -1,0 +1,253 @@
+% !Mode:: "TeX:UTF-8"
+\documentclass[a4paper,4pt]{article}
+    \author {theppsh}
+    \title {Reading Notes:\\Higher-order Integration of 
+    Hierarchical Convolutional Activations for 
+    Fine-grained Visual Categorization}  
+\usepackage{cite}
+% \usepackage{geometry}
+% \usepackage{algorithm}  
+% \usepackage{algorithmic}  
+% \usepackage{graphicx} 
+% \usepackage{booktabs}
+% \usepackage{pythonhighlight}
+% \usepackage{subfigure}
+\usepackage{amsmath}
+% \usepackage{amsfonts}
+% \usepackage{siunitx}
+% \usepackage{color,wasysym}
+% \usepackage{mathrsfs}
+\usepackage{amssymb}
+% \usepackage{amsthm}
+\usepackage{bm}
+% \usepackage{listings}
+% \usepackage{bbm}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+This paper~\cite{cai2017higher} incorporates the 
+\emph{kernel representations} into Convolutional 
+Neural Networks (CNN) for the fine-grained visual categorization (FGVC).
+I think this trick can be taken into some object detectors by modifying something... And it might 
+lead to higher performance, so I step into this article for more consideration.
+
+In general, taking the higher-oder statistics into CNN by kernel trick can help find the 
+discriminative information between two categories, and benifits the final object 
+classification or detection, and it seems to be fashion that incorporating this traditional method 
+into deep learning recently.
+Thus, the authors leverage serveral sets of convolutional filters to get an approximation of
+$r$-order polynomial kernels.
+
+\section{Matching kernel and polynomial predictor}
+Assume the output from some specific convolutional layers 
+be tensor $\bm{\mathcal{X}} \in \mathbb{R}^{K\times M \times N} $, and
+tensor $\bm{\mathcal{X}}= \{\bm{x}_p \}_{p \in \Omega}$, where $\bm{x}_p \in \mathbb{R}^K$
+represents the descriptor at a particular position $p$ over the set $\Omega$ of 
+valid spatial locations with $\lvert \Omega \rvert = M\times N$.
+
+\subsection{Review kernel trick}
+
+Kernel tricks are widely used in the conventional machine learning algorithms, for instance,
+the \emph{kernel PCA}, \emph{kernel fisher analysis}, and \emph{kernel SVM}, etc. The intuitive thought 
+of kernelization is to map the original low-dimensional data to a high-dimensional or
+infinite-dimensional space by a function 
+$\phi: \bm{x} \in \mathbb{R}^{low} \rightarrow \bm{y}\in \mathbb{R}^{high}, low \lneq high$,
+thus the non-linear-discriminative data 
+can be converted to be linearly separable. The most fascinating is
+most methods leverage \emph{kernel trick} to get the pair-wise similarity graph of the original data
+rather than calculate the high-dimensional data directly, so it's effective and efficient.
+
+Consider the matching scheme $\mathcal{K}$ for activation sets $\bm{\mathcal{X}}$ and $\bm{\bar{\mathcal{X}}}$
+from two images, in which the set similarity is measured by aggregating all the pairwise
+similarities among the local descriptors:
+\begin{equation}\label{equa:k}
+    \mathcal{K}(\bm{\mathcal{X}},\bm{\bar{\mathcal{X}}})
+    =g(\{k(\bm{x}_p,\bm{x}_q)\}_{p,q\in \Omega})
+    =\psi(\bm{\mathcal{X}})^T \psi(\bm{\bar{\mathcal{X}}} ),
+\end{equation}
+where $k(\cdot)$ is some kernel function to obtain the similarity between $\bm{x}_p$
+and $\bm{x}_q$, $g(\cdot)$ is a global sum-pooling function in this paper, $\psi(\bm{\mathcal{X}})$ 
+and $\psi(\bm{\bar{\mathcal{X}}})$ are the vector representations for the two sets individually. 
+It is worth noting that the construction of $\psi(\cdot)$ presented above is decomposed
+into two steps in CNNs: feature mapping and feature aggregating. The mapping step maps each
+local descriptor $\bm{x} \in \mathbb{R}^K$  into $\phi(\bm{x}) \in \mathbb{R}^D$.
+The feature aggregating produces an image-level representations 
+$\psi(\bm{\mathcal{X}}) \in \mathbb{R}^D$ by applying global sum-pooling function
+on the sets $\{\phi(\bm{x}_p)\}_{p\in \Omega}$
+ after the mapping step. 
+ 
+ Note that Eqn.(\ref{equa:k}) can be rewritten as:
+ \begin{equation}\label{equ:k2}
+    \begin{aligned}
+        \mathcal{K}(\bm{\mathcal{X}},\bm{\bar{\mathcal{X}}})
+        &=(\sum_p \phi(\bm{x}_p))^T(\sum_q \phi(\bm{x}_q))
+        \\
+        &=\sum_p (\phi(\bm{x}_p)^T \sum_q \phi(\bm{x}_q))
+        \\
+        &=\sum_p\sum_q \phi(\bm{x}_p)^T\phi(\bm{x}_q)
+    \end{aligned}
+ \end{equation}
+Since we use the global sum-pooling function as $g(\cdot)$, thus $\psi(\bm{\mathcal{X}})$ satisfies:
+\begin{equation}    
+    \psi(\bm{\mathcal{X}})=\sum_p \phi(\bm{x}_p).
+\end{equation}
+The term $\phi(\bm{x}_p)^T \sum_q \phi(\bm{x}_q)$ in Eqn.(\ref{equ:k2}) can be
+interpreted as the linear predictor of $\phi(\bm{x}_p)$, i.e. we regard
+$\sum_q \phi(\bm{x}_q)$ as the weights. Inspired by the above linear
+predictor, we define a function $f(\cdot)$ to project $\phi(\bm{x}_p) \in \mathbb{R}^D$ to
+$\mathbb{R}$:
+\begin{equation}
+    f(\bm{x}_p)= \langle \bm{w},\phi(\bm{x}_p) \rangle,
+\end{equation}
+where $\langle \cdot,\cdot \rangle$ is the dot product. To capture the complex and high-order 
+information among parts, use the following polynomial predictor:
+\begin{equation}\label{eqn:tensor}
+    \begin{aligned}
+        f(\bm{x}_p) 
+        &= \sum_{k=1}^K w_kx_p^k + \sum_{r=2}^R\sum_{k_1,\dots,k_r} 
+        \mathcal{W}^r_{k_1,\dots,k_r} (\prod_{s=1}^r x_p^{k_s})
+        \\
+        &= \langle \bm{w},\bm{x}_p  \rangle + \sum_{r=2}^R
+        \langle  \bm{\mathcal{W}}^r,\otimes_r \bm{x}_p \rangle
+        \\
+        &=\langle \bm{w},\bm{x}_p \rangle + \sum_{r=2}^R\sum_{k_1,\dots,k_r} 
+         \prod_{s=1}^r \sqrt[r]{\mathcal{W}^r_{k_1,\dots,k_r}} x_p^{k_s}
+        \\
+        &=\langle \bm{w},\bm{x}_p \rangle + \sum_{r=2}^R
+        \prod^r \langle \sqrt[r]{\mathcal{W}^r_{k_1,\dots,k_r}} \cdot \bm{1} , \bm{x}_p \rangle
+    \end{aligned}
+\end{equation}
+where $\bm{w}$ is the paramter of $1$-order predictor, $\bm{\mathcal{W}}^r \in \mathbb{R}^{K^r} $
+is $r$-order tensor which contains the weights of degree-$r$ variable combination in $\bm{x}$,
+$\otimes_r \bm{x} = \underbrace{\bm{x} \otimes\cdots\otimes \bm{x} }_r$, and $\otimes$ 
+denotes the \emph{kronecker product}. $\bm{1} \in \mathbb{R}^K$ is a vector whose entries
+equal to $1$.
+Note that function $f(\cdot)$ is just a mapping for $\bm{x}$, it shares some ideas like
+kernel function in Eqn.(\ref{equa:k}), but actually they are totally
+different. Obviously, take an example of the equation:
+\[
+    \sum_p\sum_q w_px_pw_qx_q = \langle \bm{w},\bm{x} \rangle^2
+    =\prod^2 \langle \bm{w},\bm{x} \rangle
+\]
+
+
+\subsection{Tensor learning}
+The $r$-order tensor $\bm{\mathcal{W}}^r \in \mathbb{R}^{K^r}$ in Eqn.(\ref{eqn:tensor})
+can be approximated by rank-one tensor decomposition: Assume r vectors
+$\bm{u}_1,\cdots,\bm{u}_{K_1} \in \mathbb{R}^{K_r}$, and their outer product
+is $K_1\times \cdots,\times K_r$ rank-one tensor which satisfies
+$(\bm{u}_1 \otimes,\cdots,\otimes \bm{u}_r )_{k_1,\cdots,k_r} 
+= (\bm{u}_1)_{k_1}\cdots(\bm{u}_r)_{k_r}$. 
+The rank-one decomposition for such tensor $\bm{\mathcal{W}}$ is defined as 
+$\bm{\mathcal{W}}=\sum_{d=1}^D \alpha^d \bm{u}_1^d\otimes \cdots \otimes \bm{u}_r^d $,
+where $\alpha^d$ is the weight for $d$-th rank-one tensor, $D$ is the rank of tensor.
+We then apply the rank-one approximation for each $r$-order tensor $\bm{\mathcal{W}}^r$
+and present the following alternative form of polynomial predictor in Eqn.(\ref{eqn:tensor}):
+\begin{equation}\label{eqn:confused}
+    \begin{aligned}
+        f(\bm{x}_p)
+        &=\langle \bm{w}, \bm{x}_p \rangle
+        +\sum^{R}_{r=2}\langle \sum^{D^r}_{d=1} \alpha^{r,d} 
+        \bm{u}_1^{r,d}\otimes \cdots \otimes \bm{u}_r^{r,d}, \otimes_r \bm{x}_p \rangle
+        \\
+        &=\langle \bm{w}, \bm{x}_p \rangle
+        +\sum^{R}_{r=2} \sum^{D^r}_{d=1} \alpha^{r,d} 
+        \langle\bm{u}_1^{r,d}\otimes \cdots \otimes \bm{u}_r^{r,d}, \otimes_r \bm{x}_p \rangle
+        \\
+        &=\langle \bm{w}, \bm{x}_p \rangle
+        +\sum^{R}_{r=2} \sum^{D^r}_{d=1} \alpha^{r,d} 
+        \sum_{k_1,\cdots,k_r}\prod_s^r u^{r,d}_{s,k_s} x_p^{k_s}
+        \\
+        &=\langle \bm{w}, \bm{x}_p \rangle
+        +\sum^{R}_{r=2} \sum^{D^r}_{d=1} \alpha^{r,d}
+        \prod_s^r \langle \bm{u}_s^{r,d}, \bm{x}_p\rangle
+        \\
+        &=\langle \bm{w}, \bm{x}_p \rangle
+        +\sum^{R}_{r=2} \langle \bm{\alpha}^r, \bm{z}^r_p \rangle
+    \end{aligned}
+\end{equation}
+where $\bm{u}_1^{r,d}, \cdots, \bm{u}_r^{r,d} \in \mathbb{R}^{K}$ are parameters
+can be learned end-to-end. $D^r$ represents the minimal rank of the r-order tensor
+$\bm{\mathcal{W}}^r$, or the hyper-paramter corresponding to the output
+channels of a particular CNN.
+$\bm{\alpha}^r=[\alpha^{r,1},\cdots,\alpha^{r,D^r}]^T$ is 
+the associated weight vector of all $D^r$ rand-one tensors. 
+Vector $\bm{z}^r_p \in \mathbb{R}^{D^r}$ whose $d$-th element satisfies:
+\begin{equation}\label{eqn:d_th}
+    (\bm{z}^r_p)_d=\prod_{s=1}^r \langle \bm{u}_s^{r,d},\bm{x}_p\rangle  
+\end{equation}
+which characterizes the degree-$r$ variable interactions under a single rank-one tensor basis.
+
+That paper costs a lot of time to describe the final function $f(\bm{x}_p)$ in Eqn.(\ref{eqn:confused}),
+and I think they 
+will implement $f(*)$ in CNN fashion, but it seems they just use $\bm{z}^r_p$ incorporated in
+the final models.
+
+The implementation embedded in CNN can be described as follows: firstly, for each $s$, we can deploy 
+$\{ \bm{u}^{r,d}_s \}_{d=1,\cdots,D^r}$ as a set of $D^r$ $1\times 1$ convolutional filters
+to generate the set of feature maps $\bm{\mathcal{Z}}^r_s$ of dimension $D^r \times M \times N$.
+To get the high-order information, we apply element-wise multiplication denoted as $\odot$, and get
+the output $\bm{\mathcal{Z}}^r \in \mathbb{R}^{D^r \times M \times N}$
+with high-order statistics information as follows:
+\begin{equation}\label{eqn:dot_prod}
+    \bm{\mathcal{Z}}^r=\bm{\mathcal{Z}}^r_1 \odot \cdots \odot \bm{\mathcal{Z}}^r_{r},
+\end{equation}
+then sum-pooling function $g(\cdot)$ is used to generate the final output
+$\bm{y}^r \in \mathbb{R}^{D^r}$ by sum-up all the local descriptors in $\bm{\mathcal{Z}}^r$:
+\begin{equation}\label{eqn:y}
+    \bm{y}^r=g(\bm{\mathcal{Z}}^r)=\sum_{p\in\Omega}{\bm{z}^r_p},
+\end{equation}
+referring to Eqn.(\ref{eqn:y}), the derivatives for $\bm{x}_p$ and each
+degree-$r$ convolutional filter $\bm{u}^{r,d}_s$ in back propagation process 
+can be achieved by:
+\begin{equation}
+    \frac{\partial \ell}{\partial \bm{z}^r_p}=
+    \frac{\partial \ell }{\partial \bm{y}^r }
+\end{equation}
+from Eqn.(\ref{eqn:d_th}) and Eqn.(\ref{eqn:dot_prod}), we denote $\bm{z}^r_p, p\in \Omega$ as:
+\begin{equation}
+    \bm{z}^r_p=\bm{z}^r_{p,1}\odot\cdots\odot \bm{z}^r_{p,r},   
+\end{equation}
+where we define $\bm{z}^r_{p,s} \in \mathbb{R}^{D^r} $ whose $d$-th entry is: 
+\begin{equation}
+    (\bm{z}^r_{p,s})_d=\langle \bm{u}_s^{r,d}, \bm{x}_p \rangle,
+\end{equation}
+notice the symbol $\bm{z}^r_{p,d}$ is different from term $(\bm{z}^r_p)_d$ in Eqn.(\ref{eqn:d_th}).
+Thus the  derivative of loss $\ell$ respect to $\bm{z}^r_{p,s}$ is:
+\begin{equation}
+    \frac{\partial \ell}{\partial \bm{z}^r_{p,s} }
+    =\frac{\partial \ell}{\partial \bm{z}^r_{p}} \odot \frac{\partial \bm{z}^r_p}{\partial \bm{z}^r_{p,s}}
+    =\frac{\partial \ell}{\partial \bm{z}^r_p}\odot 
+    \bm{z}^r_{p,1} \odot\cdots \odot \bm{z}^r_{p,s-1} \odot \bm{z}^r_{p,s+1}  \odot \cdots \odot \bm{z}^r_{p,r}
+\end{equation} 
+
+For the later convenience of derivation, define a matrix 
+$\bm{U}^r_s=[\bm{u}_s^{r,1},\cdots,\bm{u}_s^{r,D^r}]^T \in \mathbb{R}^{D^r\times K}$.
+Thus 
+\begin{equation}
+    \bm{z}^r_{p,s}=\bm{U}_s^r\bm{x}_p,
+\end{equation}
+therefore, the derivative of $\ell$ respect to $\bm{x}_p$ can be obtained by:
+\begin{equation}\label{eqn:dev_xp}
+    \frac{\partial \ell}{\partial \bm{x}_p}
+    =1+\sum_{r=2}^R \sum_{s=1}^r (\bm{U}^r_s)^T \frac{\partial \ell}{\partial \bm{z}^r_{p,s}},
+\end{equation}
+notice that we regard $\bm{z}^1_p$ as $\bm{x}_p$, thus the term $1$ in Eqn.(\ref{eqn:dev_xp}) represents the derivative of order-one interactions in $\bm{x}_p$.
+Use the chain rules, the same procedure can be easily adopted into the derivative respect to
+$\bm{U}^r_s$:
+\begin{equation}
+    \frac{\partial \ell}{\partial \bm{U}^r_s} 
+    =\sum_{p\in \Omega}
+    \frac{\partial \ell}{\partial \bm{z}^r_{p,s}} (\bm{x}_p)^T
+\end{equation}
+Of course, all the operation can be easily extended to matrix multiplication rather
+than single sample $\bm{x}_p$, you just need to be careful when programing. Actually,
+It is worth noting that some frameworks such PyTorch have implemented the derivative procedure.
+\section{Experiments}
+To be continued...
+\bibliography{refs}{}
+\bibliographystyle{plain}
+
+\end{document}
