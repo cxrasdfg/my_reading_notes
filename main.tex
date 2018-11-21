@@ -232,9 +232,11 @@ Thus
 therefore, the derivative of $\ell$ respect to $\bm{x}_p$ can be obtained by:
 \begin{equation}\label{eqn:dev_xp}
     \frac{\partial \ell}{\partial \bm{x}_p}
-    =1+\sum_{r=2}^R \sum_{s=1}^r (\bm{U}^r_s)^T \frac{\partial \ell}{\partial \bm{z}^r_{p,s}},
+    =\frac{\partial \ell}{\partial \bm{y}^1}
+    +\sum_{r=2}^R \sum_{s=1}^r (\bm{U}^r_s)^T \frac{\partial \ell}{\partial \bm{z}^r_{p,s}},
 \end{equation}
-notice that we regard $\bm{z}^1_p$ as $\bm{x}_p$, thus the term $1$ in Eqn.(\ref{eqn:dev_xp}) represents the derivative of order-one interactions in $\bm{x}_p$.
+notice that we regard $\bm{z}^1_p$ as $\bm{x}_p$, thus the term $\frac{\partial \ell}{\partial \bm{y}^1}$ 
+in Eqn.(\ref{eqn:dev_xp}) represents the derivative respect to order-one interactions in $\bm{x}_p$.
 Use the chain rules, the same procedure can be easily adopted into the derivative respect to
 $\bm{U}^r_s$:
 \begin{equation}
